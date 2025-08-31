@@ -1,0 +1,14 @@
+{
+    "name": "goose",
+    "scripts": {
+      "frontend:ext": "cd ui/desktop && cross-env GOOSE_EXTERNAL_BACKEND=true GOOSE_EXTERNAL_PORT=3000 bun run start-gui",
+      "backend:agent": "cargo run -p goose-server --bin goosed agent",
+      "set-deepseek-config": "GOOSE_PROVIDER=openai; OPENAI_HOST=https://api.deepseek.com; OPENAI_BASE_PATH=chat/completions; GOOSE_MODEL=deepseek-reasoner",
+      "start": "concurrently \"bun run backend:agent\" \"bun run frontend:ext\""
+    },
+    "dependencies": {
+      "concurrently": "latest",
+      "openai": "latest",
+      "cross-env": "latest"
+    }
+}

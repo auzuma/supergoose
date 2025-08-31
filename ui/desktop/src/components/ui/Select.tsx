@@ -38,6 +38,11 @@ export const Select = (props: React.ComponentProps<typeof ReactSelect>) => {
       tabSelectsValue={true}
       openMenuOnFocus={false}
       styles={{
+        menuPortal: (base) => ({
+          ...base,
+          zIndex: 10000,
+          pointerEvents: 'auto',
+        }),
         menu: (base) => ({
           ...base,
           pointerEvents: 'auto',

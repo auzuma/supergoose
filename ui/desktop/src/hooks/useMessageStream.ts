@@ -347,8 +347,49 @@ export function useMessageStream({
                   }
 
                   case 'Error': {
-                    // Always throw the error so it gets caught and sets the error state
-                    // This ensures the retry UI appears for ALL errors
+                    // Check if this is a context length error (more specific detection)
+                    const errorMessage = parsedEvent.error;
+                    const isContextLengthError =
+                      errorMessage &&
+                      // Only match actual context length/window errors, not rate limits
+                      ((errorMessage.toLowerCase().includes('context') &&
+                        errorMessage.toLowerCase().includes('length') &&
+                        errorMessage.toLowerCase().includes('exceeded')) ||
+                        (errorMessage.toLowerCase().includes('context') &&
+                          errorMessage.toLowerCase().includes('window')) ||
+                        (errorMessage.toLowerCase().includes('maximum context length')) ||
+                        (errorMessage.toLowerCase().includes('context size') &&
+                          errorMessage.toLowerCase().includes('exceed')) ||
+                        // Exclude rate limit errors that mention "tokens per minute" or "rate limit"
+                        (!errorMessage.toLowerCase().includes('rate limit') &&
+                          !errorMessage.toLowerCase().includes('tokens per minute') &&
+                          !errorMessage.toLowerCase().includes('tpm') &&
+                          !errorMessage.toLowerCase().includes('rpm')));
+
+                    // If this is a context length error, create a contextLengthExceeded message instead of throwing
+                    if (isContextLengthError) {
+                      const contextMessage: Message = {
+                        id: generateMessageId(),
+                        role: 'assistant',
+                        created: Math.floor(Date.now() / 1000),
+                        content: [
+                          {
+                            type: 'contextLengthExceeded',
+                            msg: errorMessage,
+                          },
+                        ],
+                        display: true,
+                        sendToLLM: false,
+                      };
+
+                      currentMessages = [...currentMessages, contextMessage];
+                      mutate(currentMessages, false);
+
+                      // Clear any existing error state since we handled this as a context message
+                      setError(undefined);
+                      break; // Don't throw error, just add the message
+                    }
+
                     throw new Error(parsedEvent.error);
                   }
 

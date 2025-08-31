@@ -29,6 +29,9 @@ import { DroppedFile, useFileDrop } from '../hooks/useFileDrop';
 import { Recipe } from '../recipe';
 import MessageQueue from './MessageQueue';
 import { detectInterruption } from '../utils/interruptionDetector';
+import { Select } from './ui/Select';
+import { extendPrompt } from '../api';
+type CustomGooseOption = { value: 'proto' | 'unitTester'; label: string; description: string };
 
 interface QueuedMessage {
   id: string;
@@ -137,6 +140,8 @@ export default function ChatInput({
   const { getCurrentModelAndProvider, currentModel, currentProvider } = useModelAndProvider();
   const [tokenLimit, setTokenLimit] = useState<number>(TOKEN_LIMIT_DEFAULT);
   const [isTokenLimitLoaded, setIsTokenLimitLoaded] = useState(false);
+  const [selectedGoose, setSelectedGoose] = useState<'proto' | 'unitTester'>('proto');
+  const unitTesterAppliedRef = useRef(false);
 
   // Draft functionality - get chat context and global draft context
   // We need to handle the case where ChatInput is used without ChatProvider (e.g., in Hub)
@@ -1118,6 +1123,41 @@ export default function ChatInput({
     }, 0);
   };
 
+  // Options for Custom Gooses dropdown
+  const customGooseOptions: CustomGooseOption[] = useMemo(() => [
+    {
+      value: 'proto',
+      label: 'Proto',
+      description: 'The normal Goose you know and love',
+    },
+    {
+      value: 'unitTester',
+      label: 'Unit Tester',
+      description: 'A custom Goose, optimized for writing unit tests',
+    },
+  ], []);
+
+  // When Unit Tester is selected, extend the system prompt once per session
+  useEffect(() => {
+    const applyUnitTesterPrompt = async () => {
+      try {
+        await extendPrompt({
+          body: {
+            extension:
+              '\n\nYour name is "Unit Tester" - and you are a custom Goose that was programmed to write unit tests. Please write efficient and powerful unit tests.',
+          },
+        });
+      } catch (err) {
+        console.error('Failed to extend prompt for Unit Tester:', err);
+      }
+    };
+
+    if (selectedGoose === 'unitTester' && !unitTesterAppliedRef.current) {
+      unitTesterAppliedRef.current = true;
+      applyUnitTesterPrompt();
+    }
+  }, [selectedGoose]);
+
   const hasSubmittableContent =
     displayValue.trim() ||
     pastedImages.some((img) => img.filePath && !img.error && !img.isLoading) ||
@@ -1546,6 +1586,38 @@ export default function ChatInput({
           </TooltipTrigger>
           <TooltipContent>Attach file or directory</TooltipContent>
         </Tooltip>
+        <div className="w-px h-4 bg-border-default mx-2" />
+
+        {/* Custom Gooses dropdown */}
+        <div className="min-w-[220px] max-w-[260px]">
+          <Select
+            instanceId="custom-gooses-select"
+            menuPortalTarget={document.body}
+            menuPosition="fixed"
+            menuPlacement="auto"
+            value={customGooseOptions.find((o) => o.value === selectedGoose)}
+            onChange={(opt: any) => {
+              const option = opt as CustomGooseOption | null;
+              if (option) setSelectedGoose(option.value);
+            }}
+            options={customGooseOptions}
+            isSearchable={false}
+            formatOptionLabel={(option, meta) => {
+              const typed = option as unknown as CustomGooseOption;
+              const ctx = (meta as unknown as { context: 'menu' | 'value' }).context;
+              return (
+                <div className="flex flex-col leading-tight">
+                  <span className="font-semibold text-textStandard">{typed.label}</span>
+                  {ctx === 'menu' && (
+                    <span className="text-xs text-textSubtle mt-0.5">{typed.description}</span>
+                  )}
+                </div>
+              );
+            }}
+            getOptionValue={(opt) => (opt as unknown as CustomGooseOption).value}
+            placeholder="Select Goose"
+          />
+        </div>
         <div className="w-px h-4 bg-border-default mx-2" />
 
         {/* Model selector, mode selector, alerts, summarize button */}
