@@ -140,7 +140,14 @@ export default function ChatInput({
   const { getCurrentModelAndProvider, currentModel, currentProvider } = useModelAndProvider();
   const [tokenLimit, setTokenLimit] = useState<number>(TOKEN_LIMIT_DEFAULT);
   const [isTokenLimitLoaded, setIsTokenLimitLoaded] = useState(false);
-  const [selectedGoose, setSelectedGoose] = useState<'proto' | 'unitTester'>('proto');
+  const [selectedGoose, setSelectedGoose] = useState<'proto' | 'unitTester'>(() => {
+    try {
+      const stored = window.localStorage.getItem('custom-goose-selection');
+      return stored === 'unitTester' ? 'unitTester' : 'proto';
+    } catch {
+      return 'proto';
+    }
+  });
   const unitTesterAppliedRef = useRef(false);
 
   // Draft functionality - get chat context and global draft context
@@ -1152,9 +1159,20 @@ export default function ChatInput({
       }
     };
 
-    if (selectedGoose === 'unitTester' && !unitTesterAppliedRef.current) {
-      unitTesterAppliedRef.current = true;
-      applyUnitTesterPrompt();
+    // Only extend once per session (tab) to avoid duplicate prompt growth
+    const sessionKey = 'custom-goose-unit-tester-applied';
+    try {
+      const applied = window.sessionStorage.getItem(sessionKey) === 'true';
+      if (selectedGoose === 'unitTester' && !unitTesterAppliedRef.current && !applied) {
+        unitTesterAppliedRef.current = true;
+        window.sessionStorage.setItem(sessionKey, 'true');
+        applyUnitTesterPrompt();
+      }
+    } catch {
+      if (selectedGoose === 'unitTester' && !unitTesterAppliedRef.current) {
+        unitTesterAppliedRef.current = true;
+        applyUnitTesterPrompt();
+      }
     }
   }, [selectedGoose]);
 
@@ -1598,7 +1616,12 @@ export default function ChatInput({
             value={customGooseOptions.find((o) => o.value === selectedGoose)}
             onChange={(opt: any) => {
               const option = opt as CustomGooseOption | null;
-              if (option) setSelectedGoose(option.value);
+              if (option) {
+                try {
+                  window.localStorage.setItem('custom-goose-selection', option.value);
+                } catch {}
+                setSelectedGoose(option.value);
+              }
             }}
             options={customGooseOptions}
             isSearchable={false}
