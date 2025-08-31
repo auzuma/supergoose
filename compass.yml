@@ -1,0 +1,16 @@
+name: supergoose
+id: ari:cloud:compass:ad4e3667-5f42-4629-ac06-5a00995a9b81:component/f04fbbc0-c738-4aad-b084-f2eeb00aefb7/6d68e218-71f8-4a9e-adbc-b4ec357c4101
+description: null
+configVersion: 1
+typeId: SERVICE
+fields:
+  tier: 4
+links:
+  - name: null
+    type: REPOSITORY
+    url: https://github.com/auzuma/supergoose
+relationships:
+  DEPENDS_ON: []
+labels:
+  - source:github
+customFields: null
